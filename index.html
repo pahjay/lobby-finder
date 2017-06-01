@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+    <input id="createuser" type="button" value="create user" onclick="createUser()"/>
+
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = io();
+        function createUser() {
+            console.log('user creates');
+            let username = 'bob';
+            socket.emit('createUser', username);
+        }
+
+        socket.on('alert', function (id) {
+            document.title = 'lobbyID: ' + id;
+        });
+
+    </script>
+</body>
+</html>
