@@ -8,6 +8,9 @@ server.listen(3000);
 
 // for debugging
 let testNames = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'theta', 'kappa', 'lambda', 'zeta', 'tau', 'pi'];
+let testGames = ['CounterStrikeGlobalOffensive', 'LeagueOfLegends'];
+let testParam = ['beginner', 'intermediate'];
+
 
 let lobbies = {};
 let users = []; // this will be replaced once you can choose which game to queue for.
@@ -34,7 +37,9 @@ class User {
     exists() {
         for (let i = 0; i < users.length; i++) {
             if (this.name === users[i].name) {
+                this.name = users[i].name;
                 this.id = users[i].id;
+                this.lobbyID = users[i].lobbyID;
                 console.log(this.name + ' already exists, assigning id value');
                 return true;
             }
@@ -43,12 +48,24 @@ class User {
     }
 
     delete(){
-        if (lobbies[this.lobbyID] !== null) {
+        userExistsInQueue = function() {
+            for (let i = 0; i < users.length; i++) {
+                if (users[i].id === this.id) return true;
+            }
+            return false;
+        };
+
+        if (userExistsInQueue) {
+            delete users[this.id];
+            console.log(this.name + ' has been deleted from the queue');
+        } else if (lobbies[this.lobbyID] !== undefined) {
             delete lobbies[this.lobbyID].lobbyUsers[this.id];
             console.log(Object.keys(lobbies[this.lobbyID].lobbyUsers).length);
             console.log(this.name + ' has been deleted from the lobby');
+        } else {
+            console.log('user does not exist in system');
         }
-    }
+    };
 }
 
 // lobby class
@@ -108,7 +125,7 @@ io.on('connection', function (socket) {
 // continuous service which drops the top X amount of players for each game queue into lobbies
 // removes those players from other selected game queues if lobby has been found.
 function queueService() {
-    if (users.length >= 5){
+    if (Object.keys(users).length >= 5){
         let lobby = new Lobby();
 
         for (i = 0; i < 5; i++) {
