@@ -9,11 +9,15 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         let socket = io();
-        function createUser() {
-            console.log('user creates');
-            let username = 'bob';
-            socket.emit('createUser', username);
-        }
+        let testGames = ['CounterStrikeGlobalOffensive', 'LeagueOfLegends'];
+        let testParam = ['beginner', 'intermediate'];
+
+        socket.on('setParams', function() {
+            let queue = testGames[Math.floor(Math.random() * testGames.length)] + '_' + testParam[Math.floor(Math.random() * testParam.length)];
+            console.log('queue selection has been set to ' + queue);
+            socket.emit('joinQueue', queue);
+        });
+
 
         socket.on('alert', function (id) {
             document.title = 'lobbyID: ' + id;
