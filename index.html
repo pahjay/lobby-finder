@@ -10,7 +10,7 @@
     <script>
         let socket = io();
         let testGames = ['CounterStrikeGlobalOffensive', 'LeagueOfLegends'];
-        let testParam = ['beginner', 'intermediate'];
+        let testParam = ['beginner'];
 
         socket.on('setParams', function() {
             let queue = testGames[Math.floor(Math.random() * testGames.length)] + '_' + testParam[Math.floor(Math.random() * testParam.length)];
