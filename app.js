@@ -37,23 +37,6 @@ class User {
         this.activeQueues = []; // all currently active queues the user is in
     }
 
-    // // // checks if a user exists in their selected queues
-    // exists() {
-    //     if (queues[queueName] !== undefined) {
-    //         let selectedQueue = queues[queueName];
-    //         for (let i = 0; i < selectedQueue.length; i++) {
-    //             if (this.name === selectedQueue[i].name) {
-    //                 this.name = selectedQueue[i].name;
-    //                 this.id = selectedQueue[i].id;
-    //                 this.lobbyID = selectedQueue[i].lobbyID;
-    //                 console.log(this.name + ' already exists, assigning id value');
-    //                 return true;
-    //             }
-    //         }
-    //     }
-    //     return false;
-    // };
-
     existsInLobby() {
         return lobbies[this.lobbyID] !== undefined;
     };
@@ -77,8 +60,6 @@ class User {
         }
         return false;
     }
-
-
 
     deleteFromQueues(){
         for (let i = 0; i < this.activeQueues.length; i++) {
@@ -117,10 +98,6 @@ class User {
 
     // removes users from all queues and lobbies
     delete(){
-
-        // TODO: add queues to user class and remove when lobby is found?
-        // TODO: remove users from the toBeDeleted list after removing from queue and/or lobbies.
-
         if (this.existsInQueues()) {
             this.deleteFromQueues();
         } else if (this.existsInLobby()) {
@@ -222,12 +199,6 @@ function queueService() {
     }
 } setInterval(queueService, 10);
 
-/**
- *
- * @param queue this is the queue query that is created by the user
- * @param user holds the user info
- * @param socket holds the websocket id
- */
 function addToQueue(queue, user, socket) {
     if (queues[queue] !== undefined) {
         queues[queue].push(user);
