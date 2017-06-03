@@ -3,14 +3,12 @@
 <head>
 </head>
 <body>
-    <input id="createuser" type="button" value="create user" onclick="createUser()"/>
-
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         let socket = io();
-        let testGames = ['CounterStrikeGlobalOffensive', 'LeagueOfLegends'];
-        let testParam = ['beginner'];
+        let testGames = ['1'];
+        let testParam = ['a'];
 
         socket.on('setParams', function() {
             let queue = testGames[Math.floor(Math.random() * testGames.length)] + '_' + testParam[Math.floor(Math.random() * testParam.length)];
