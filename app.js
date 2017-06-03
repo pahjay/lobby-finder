@@ -12,12 +12,12 @@ let DC_TIMEOUT_LENGTH = 5000;
 let testNames = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'theta', 'kappa', 'lambda', 'zeta', 'tau', 'pi'];
 let repeatNames = ['alpha', 'beta', 'gamma', 'delta', 'epsilon'];
 
-let users = {};
+let userMap = {};
 let toBeDeleted = {}; // holds user info for those who disconnect but haven't timed out
 let queues = {};  // holds all queues in the form of queues[queue name] =  []
 let activeQueueList = [];   // holds the names of all currently active queue names,
-let roomID = 0; // incrementing int which names the currently active rooms.
 let lobbyCount = 0;
+
 let s4 = function () {
     return Math.floor(Math.random() * 0x10000).toString();
 };
@@ -33,13 +33,13 @@ class User {
         this.lobby = null; //
         this.socket = null;
         this.activeQueues = []; // all currently active queues the user is in
-        this.tabCount = 1;
+        this.tabCount = 0;
         this.disconnected = false; // disconnected flag for checking reconnects
     }
 
     existsInLobby() {
-        if (users[this.name] !== undefined) {
-            if (users[this.name].lobby !== null) {
+        if (userMap[this.name] !== undefined) {
+            if (userMap[this.name].lobby !== null) {
                 console.log(this.name + ' exists in a lobby.');
                 return true;
             }
@@ -48,8 +48,8 @@ class User {
     };
 
     existsInQueues() {
-        if (users[this.name] !== undefined) {
-            if (users[this.name].activeQueues.length > 0) {
+        if (userMap[this.name] !== undefined) {
+            if (userMap[this.name].activeQueues.length > 0) {
                 return true;
             }
         }
@@ -61,7 +61,7 @@ class User {
         if (selectedQueue !== undefined) {
             for (let i = 0; i < selectedQueue.length; i++) {
                 if (this.name === selectedQueue[i].name) {
-                    console.log(this.name + ' already exists in ' + queueName);
+                    console.log(this.name + ' already exists in ' + queueName + ' with a tab count of ' + userMap[this.name].tabCount);
                     return true;
                 }
             }
@@ -70,19 +70,19 @@ class User {
     }
 
     deleteFromQueues(){
-        for (let i = 0; i < users[this.name].activeQueues.length; i++) {
-            let queueName = users[this.name].activeQueues[i];
+        for (let i = 0; i < userMap[this.name].activeQueues.length; i++) {
+            let queueName = userMap[this.name].activeQueues[i];
             let selectedQueue = queues[queueName];
             for (let x = 0; x < selectedQueue.length; x++) {
                 if (this.name === selectedQueue[x].name) {
                     selectedQueue.splice(x, 1);
                     queues[queueName] = selectedQueue;
-                    users[this.name].activeQueues.splice(i, 1);
+                    userMap[this.name].activeQueues.splice(i, 1);
                     break;
                 }
                 // delete user if no active queues left
-                if (users[this.name].activeQueues.length === 0) {
-                    delete users[this.name];
+                if (userMap[this.name].activeQueues.length === 0) {
+                    delete userMap[this.name];
                     break;
                 }
             }
@@ -96,19 +96,19 @@ class User {
     }
 
     deleteFromLobby(){
-        delete users[this.name];
+        delete userMap[this.name];
         console.log(this.name + ' has been deleted from lobby.');
     }
 
     removeFromActiveQueueList(queueName){
         for (let i = 0; i < this.activeQueues.length; i++) {
             if (queueName === this.activeQueues[i]) {
-                users[this.name].activeQueues.splice(i, 1);
+                userMap[this.name].activeQueues.splice(i, 1);
             }
         }
     }
 
-    // removes users from all queues and lobbies
+    // removes userMap from all queues and lobbies
     delete(){
         if (this.existsInQueues()) {
             this.deleteFromQueues();
@@ -138,7 +138,8 @@ io.on('connection', function (socket) {
     let name = testNames[Math.floor(Math.random() * testNames.length)];
     console.log(name + ' has connected.');
     let user = new User(name);
-    if (users[user.name] === undefined) users[user.name] = user;
+
+    addToUserMap(user);
     io.to(socket.id).emit('setParams'); // debug call to automatically set parameters for new user connections
 
     // called when the user joins a lobby
@@ -152,18 +153,19 @@ io.on('connection', function (socket) {
     // handles when the user disconnects from the session
     socket.on('disconnect', function() {
         console.log(user.name + ' has disconnected');
-        console.log('userID ' + user.id);
-        console.log('lobby ' + user.lobby);
+        console.log('userID ' + userMap[user.name].id);
+        console.log('lobby ' + userMap[user.name].lobby);
 
         toBeDeleted[user.name] = user;
         // console.log(user.name + ' has been added to the toBeDeleted list.');
 
         user.disconnected = true;
         setTimeout(function () {
-            if (user.disconnected){
+            if (user.disconnected && userMap[user.name].tabCount === 1){
                 user.delete();
             } else {
-                console.log('secondary tab detected, ignoring delete call...');
+                userMap[user.name].tabCount--;
+                console.log('secondary tab detected, ignoring delete call and tab count is now ' + userMap[user.name].tabCount);
                 delete toBeDeleted[user.name];
             }
         }, DC_TIMEOUT_LENGTH);
@@ -182,10 +184,10 @@ function queueService() {
             let lobbyName = id_();
             for (let x = 0; x < 5; x++) {
                 let user = queues[queueName].pop();
-                users[user.name].lobby = lobbyName;
+                userMap[user.name].lobby = lobbyName;
                 user.removeFromActiveQueueList(queueName);
-                let socket = users[user.name].socket;
-                socket.join(users[user.name].lobby);
+                let socket = userMap[user.name].socket;
+                socket.join(userMap[user.name].lobby);
                 user.deleteFromQueues();
             }
 
@@ -195,12 +197,22 @@ function queueService() {
     }
 } setInterval(queueService, 10);
 
+function addToUserMap(user) {
+    if (userMap[user.name] === undefined) {
+        userMap[user.name] = user;
+    } else {
+        user.id = userMap[user.name].id;
+        user.lobby = userMap[user.name].lobby;
+    }
+    userMap[user.name].tabCount++;
+}
+
 // iterates through all active queues, if one is empty, erase
 function queueManager() {
 
 }
 
-// iterates through all active lobbies, if all users have left the lobby, erase
+// iterates through all active lobbies, if all userMap have left the lobby, erase
 function lobbyManager() {
 
 }
@@ -213,6 +225,6 @@ function addToQueue(queue, user, socket) {
         activeQueueList.push(queue);
     }
 
-    users[user.name].socket = socket;
+    userMap[user.name].socket = socket;
     console.log('user: ' + user.name + ' was pushed to ' + queue + ' with a size of ' + queues[queue].length);
 }
