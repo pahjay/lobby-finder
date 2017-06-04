@@ -118,7 +118,7 @@ class User {
         } else if (this.existsInLobby()) {
             this.deleteFromLobby();
         } else {
-            console.log('user does not exist in system.');
+            console.log(this.name + ' does not exist in system.');
         }
 
         delete toBeDeleted[this.name];
