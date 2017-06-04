@@ -17,6 +17,7 @@ let toBeDeleted = {}; // holds user info for those who disconnect but haven't ti
 let queues = {};  // holds all queues in the form of queues[queue name] =  []
 let activeQueueList = [];   // holds the names of all currently active queue names,
 let lobbyCount = 0;
+let lobbySizeMap = {}; // holds the size of all currently active lobbies
 
 let s4 = function () {
     return Math.floor(Math.random() * 0x10000).toString();
@@ -97,7 +98,9 @@ class User {
 
     deleteFromLobby(){
         delete userMap[this.name];
+        lobbySizeMap[this.lobby]--;
         console.log(this.name + ' has been deleted from lobby.');
+        console.log('lobby size is now ' + lobbySizeMap[this.lobby]);
     }
 
     removeFromActiveQueueList(queueName){
@@ -182,9 +185,9 @@ function queueService() {
 
         if (queues[queueName].length >= 5) {
             let lobbyName = id_();
+            lobbySizeMap[lobbyName] = 0;
             for (let x = 0; x < 5; x++) {
                 let user = queues[queueName].pop();
-                userMap[user.name].lobby = lobbyName;
                 user.removeFromActiveQueueList(queueName);
                 let socket = userMap[user.name].socket;
                 socket.join(userMap[user.name].lobby);
@@ -209,12 +212,19 @@ function addToUserMap(user) {
 
 // iterates through all active queues, if one is empty, erase
 function queueManager() {
+    for (let i = 0; i < activeQueueList.length; i++) {
+        if (queues[activeQueueList[i]].length === 0) {
+            console.log('deleting ' + activeQueueList[i]);
+            delete queues[activeQueueList[i]];
+            activeQueueList.splice(i, 1);
+        }
+    }
+} setInterval(queueManager, 1000);
 
-}
-
-// iterates through all active lobbies, if all userMap have left the lobby, erase
-function lobbyManager() {
-
+// deletes empty lobbies
+function deleteLobby(lobbyName) {
+    // do nothing
+    // As of right now, lobbies seem to be getting deleted once the users disconnect.
 }
 
 function addToQueue(queue, user, socket) {
