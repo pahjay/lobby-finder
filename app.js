@@ -31,16 +31,18 @@ class User {
         this.id = id_(); // random string identifier
         this.name = name_; // username
         this.lobby = null; //
-        this.socket = null;
+        this.sockets = new Set();
         this.activeQueues = []; // all currently active queues the user is in
         this.tabCount = 0;
         this.disconnected = false; // disconnected flag for checking reconnects
     }
 
-    existsInLobby() {
+    existsInLobby(socket) {
         if (userMap[this.name] !== undefined) {
             if (userMap[this.name].lobby !== null) {
-                console.log(this.name + ' exists in a lobby.');
+                console.log(this.name + ' exists in a lobby, re-instancing user');
+                this.lobby = userMap[this.name].lobby;
+                userMap[this.name].sockets.add(socket);
                 return true;
             }
         }
@@ -56,12 +58,13 @@ class User {
         return false;
     };
 
-    existsInQueue(queueName) {
+    existsInQueue(queueName, socket) {
         let selectedQueue = queues[queueName];
         if (selectedQueue !== undefined) {
             for (let i = 0; i < selectedQueue.length; i++) {
                 if (this.name === selectedQueue[i].name) {
                     console.log(this.name + ' already exists in ' + queueName + ' with a tab count of ' + userMap[this.name].tabCount);
+                    userMap[this.name].sockets.add(socket);
                     return true;
                 }
             }
@@ -138,23 +141,27 @@ io.on('connection', function (socket) {
     let name = testNames[Math.floor(Math.random() * testNames.length)];
     console.log(name + ' has connected.');
     let user = new User(name);
-
     addToUserMap(user);
+
     io.to(socket.id).emit('setParams'); // debug call to automatically set parameters for new user connections
 
     // called when the user joins a lobby
     socket.on('joinQueue', function(queueName) {
-        if (!user.existsInQueue(queueName) && !user.existsInLobby()) {
+        if (!user.existsInQueue(queueName, socket) && !user.existsInLobby(socket)) {
             addToQueue(queueName, user, socket);
             user.activeQueues.push(queueName);
         }
     });
 
+    socket.on('chat message', function(message){
+        io.to(user.lobby).emit('chat message', message);
+    });
+
     // handles when the user disconnects from the session
     socket.on('disconnect', function() {
         console.log(user.name + ' has disconnected');
-        console.log('userID ' + userMap[user.name].id);
-        console.log('lobby ' + userMap[user.name].lobby);
+        // console.log('userID ' + userMap[user.name].id);
+        // console.log('lobby ' + userMap[user.name].lobby);
 
         toBeDeleted[user.name] = user;
         // console.log(user.name + ' has been added to the toBeDeleted list.');
@@ -186,8 +193,10 @@ function queueService() {
                 let user = queues[queueName].pop();
                 userMap[user.name].lobby = lobbyName;
                 user.removeFromActiveQueueList(queueName);
-                let socket = userMap[user.name].socket;
-                socket.join(userMap[user.name].lobby);
+                let sockets = userMap[user.name].sockets;
+                for (let socket of sockets){
+                    socket.join(userMap[user.name].lobby);
+                }
                 user.deleteFromQueues();
             }
 
@@ -225,6 +234,6 @@ function addToQueue(queue, user, socket) {
         activeQueueList.push(queue);
     }
 
-    userMap[user.name].socket = socket;
+    userMap[user.name].sockets.add(socket);
     console.log('user: ' + user.name + ' was pushed to ' + queue + ' with a size of ' + queues[queue].length);
 }
