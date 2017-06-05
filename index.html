@@ -43,7 +43,6 @@
 
         $('form').submit(function() {
             socket.emit('chat message', $('#m').val());
-            socket.emit('chat message', socket.id);
             $('#m').val('');
             return false;
         });
