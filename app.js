@@ -43,6 +43,7 @@ class User {
                 console.log(this.name + ' exists in a lobby, re-instancing user');
                 this.lobby = userMap[this.name].lobby;
                 userMap[this.name].sockets.add(socket);
+                socket.join(userMap[this.name].lobby);
                 return true;
             }
         }
@@ -194,6 +195,7 @@ function queueService() {
                 userMap[user.name].lobby = lobbyName;
                 user.removeFromActiveQueueList(queueName);
                 let sockets = userMap[user.name].sockets;
+                // iterate through all live sockets to handle multiple tabs
                 for (let socket of sockets){
                     socket.join(userMap[user.name].lobby);
                 }
