@@ -141,13 +141,18 @@ server.listen(3000, function(){
 
 // emit connected message to client
 io.on('connection', function (socket) {
-    // let name = testNames[Math.floor(Math.random() * testNames.length)];
+    io.to(socket.id).emit('add user');
+    let user;
+
+    socket.on('add user', function(){
+     // let name = testNames[Math.floor(Math.random() * testNames.length)];
     let name = generateRandomName(5);
     console.log(name + ' has connected.');
-    let user = new User(name);
+    user = new User(name);
     addToUserMap(user);
     userMap[user.name].sockets[socket.id] = socket;
     io.to(socket.id).emit('setParams'); // debug call to automatically set parameters for new user connections
+    });
 
     // called when the user joins a lobby
     socket.on('joinQueue', function(queueName) {
@@ -174,6 +179,7 @@ io.on('connection', function (socket) {
         user.disconnected = true;
         setTimeout(function () {
             if (user.disconnected && userMap[user.name].tabCount === 1){
+                socket.to(userMap[user.name].lobby).emit('remove from user list', user.name);
                 user.delete();
             } else {
                 userMap[user.name].tabCount--;
@@ -190,18 +196,24 @@ io.on('connection', function (socket) {
 function queueService() {
     // iterate through all currently active queues
     for (let i = 0; i < activeQueueList.length; i++) {
-        var queueName = activeQueueList[i];
+        let queueName = activeQueueList[i];
 
         if (queues[queueName].length >= 5) {
             let lobbyName = id_();
+            let lobbyUserList = [];
             for (let x = 0; x < 5; x++) {
-                let user = queues[queueName].pop();
+                let user = queues[queueName].shift();
                 addUserToLobby(user, lobbyName);
+                lobbyUserList.push(user.name);
                 // since we popped off queue, we need to remove queue from active list manually.
                 user.removeFromActiveQueueList(queueName);
                 // remove user from trailing queues (also removes remaining queues from active queue list)
                 user.deleteFromQueues();
 
+            }
+            for (let i = 0; i < lobbyUserList.length; i++) {
+                // sockets have connected and we are ready to update lobby list
+                io.to(lobbyName).emit('add to user list', lobbyUserList[i]);
             }
             io.to(lobbyName).emit('alert', lobbyName);
             console.log('\nlobby successfully created. There are currently ' + ++lobbyCount + ' in use.\n');

@@ -1,0 +1,14 @@
+# server-load-test.yaml
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 600
+      arrivalRate: 5
+scenarios:
+  - name: "Connect and send a bunch of messages"
+  - engine: "socketio"
+    flow:
+      - emit:
+          channel: "chat message"
+          data: "test"
+      - think: 1

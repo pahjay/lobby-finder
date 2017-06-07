@@ -40,6 +40,11 @@
         let socket = io();
         let testGames = ['1'];
         let testParam = ['a'];
+        let lobbyNames = {};
+
+        socket.on('add user', function() {
+           socket.emit('add user');
+        });
 
         socket.on('disconnected', function() {
            alert('this user has been disconnected for the following reason(s): ' + reason);
@@ -66,6 +71,25 @@
         socket.on('chat message', function(msg) {
            $('#messages').append($('<li>').text(msg));
         });
+
+        socket.on('add to user list', function(name) {
+            lobbyNames[name]= '<li>' + name + '</li>';
+            updateUserList();
+        });
+
+        socket.on('remove from user list', function(name) {
+            delete lobbyNames[name];
+            updateUserList();
+        });
+
+        function updateUserList() {
+            let temp = $.map(lobbyNames, function(value, index) {
+                return [value];
+            });
+            $('#user_names').empty();
+            $('#user_names').append(temp.join(''));
+        }
+
 
     </script>
 </body>
